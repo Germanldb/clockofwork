@@ -11,10 +11,13 @@
   // Proyectos y Clientes
   let projects: { id: string, name: string, color: string, hourly_rate?: number }[] = [];
   let selectedProjectId = '';
-  let currentView: 'timer' | 'projects' = 'timer';
+  let currentView: 'timer' | 'projects' | 'reports' = 'timer';
   let newProjectName = '';
   let newProjectColor = '#8b5cf6';
   let newProjectRate = 0;
+  
+  // Para los efectos de hover en reportes
+  let hoveredProjectId: string | null = null;
   
   let currentRate = 0;
   let initialized = false;
@@ -290,6 +293,64 @@
   $: weekTotalSeconds = tasks.filter(t => isTaskInCurrentWeek(t.date, weekDays)).reduce((acc, t) => acc + (t.duration_seconds || 0), 0);
   $: weekTotalEarnings = tasks.filter(t => isTaskInCurrentWeek(t.date, weekDays)).reduce((acc, t) => acc + ((t.duration_seconds || 0) / 3600) * getTaskRate(t, currentRate), 0);
 
+  let reportDate = new Date();
+  function prevReportMonth() { reportDate = new Date(reportDate.getFullYear(), reportDate.getMonth() - 1, 1); }
+  function nextReportMonth() { reportDate = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 1); }
+  $: reportMonthName = reportDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  $: reportTasks = tasks.filter(t => {
+     const d = new Date(t.date);
+     return d.getMonth() === reportDate.getMonth() && d.getFullYear() === reportDate.getFullYear();
+  });
+  $: reportTotalSeconds = reportTasks.reduce((acc, t) => acc + (t.duration_seconds || 0), 0);
+  $: reportTotalEarnings = reportTasks.reduce((acc, t) => acc + ((t.duration_seconds || 0) / 3600) * getTaskRate(t, currentRate), 0);
+
+  $: reportDaysList = (() => {
+     const numDays = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0).getDate();
+     const arr = [];
+     for(let i=1; i<=numDays; i++) {
+        const d = new Date(reportDate.getFullYear(), reportDate.getMonth(), i);
+        const dayTasks = reportTasks.filter(t => new Date(t.date).getDate() === i);
+        const totalSecs = dayTasks.reduce((acc, t) => acc + (t.duration_seconds || 0), 0);
+        arr.push({
+           date: d,
+           label: i.toString().padStart(2, '0'),
+           totalSecs
+        });
+     }
+     return arr;
+  })();
+  
+  $: maxReportSecs = Math.max(...reportDaysList.map(d => d.totalSecs), 1);
+  
+  $: reportProjects = (() => {
+    const projMap = new Map();
+    reportTasks.forEach(t => {
+      const pid = t.project_id || 'none';
+      if (!projMap.has(pid)) {
+         projMap.set(pid, {
+           id: pid,
+           name: t.projects?.name || '(Sin proyecto)',
+           color: t.projects?.color || '#888',
+           totalSecs: 0
+         });
+      }
+      projMap.get(pid).totalSecs += (t.duration_seconds || 0);
+    });
+
+    let arr = Array.from(projMap.values()).filter(p => p.totalSecs > 0);
+    arr.sort((a, b) => b.totalSecs - a.totalSecs);
+
+    const total = arr.reduce((acc, p) => acc + p.totalSecs, 0);
+    let currentOffset = 0;
+    return arr.map(p => {
+      const pct = total > 0 ? (p.totalSecs / total) : 0;
+      const offset = currentOffset;
+      currentOffset += pct * 100;
+      return { ...p, pct, offset };
+    });
+  })();
+
   function getDayTasksWithLayout(allTasks: any[], dayObj: Date) {
     const dayTasks = allTasks.filter(t => isSameDay(new Date(t.date), dayObj));
     dayTasks.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -502,7 +563,7 @@
       
       <div class="nav-section">
         <span class="section-title">ANÁLISIS</span>
-        <button class="nav-item">
+        <button class="nav-item" class:active={currentView === 'reports'} on:click={() => currentView = 'reports'}>
           <span class="icon">📊</span> Reportes
         </button>
       </div>
@@ -678,6 +739,130 @@
           {/each}
           {#if projects.length === 0}
             <div class="empty-state">No tienes proyectos registrados.</div>
+          {/if}
+        </div>
+      </div>
+    {:else if currentView === 'reports'}
+      <!-- Vista de Reportes -->
+      <div class="reports-view">
+        
+        <div class="reports-header" style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn-icon" on:click={prevReportMonth}>{"<"}</button>
+          <div class="date-range-badge">
+            <span class="icon">📅</span>
+            {reportMonthName.toUpperCase()}
+          </div>
+          <button class="btn-icon" on:click={nextReportMonth}>{">"}</button>
+        </div>
+
+        <div class="kpi-cards">
+          <div class="kpi-card">
+            <span class="kpi-title">Total Hours</span>
+            <span class="kpi-value">{formatDurationDisplay(reportTotalSeconds)}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">Billable Hours</span>
+            <span class="kpi-value">{formatDurationDisplay(reportTotalSeconds)}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">Amount</span>
+            <span class="kpi-value">${reportTotalEarnings.toFixed(2)}</span>
+          </div>
+          <div class="kpi-card" style="border-right: none;">
+            <span class="kpi-title">Average Daily Hours</span>
+            <span class="kpi-value">{formatDurationDisplay(Math.floor(reportTotalSeconds / new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0).getDate()))}</span>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="bar-chart-container">
+            <div class="chart-title">Duration by day</div>
+            <div class="bar-chart">
+              {#each reportDaysList as rDay}
+                <div class="bar-col">
+                  <div class="bar-value" style="opacity: {rDay.totalSecs > 0 ? 1 : 0}; font-size: 0.55rem;">{formatDurationDisplay(rDay.totalSecs)}</div>
+                  <div class="bar-track">
+                    <div class="bar-fill" style="height: {(rDay.totalSecs / maxReportSecs) * 100}%;"></div>
+                  </div>
+                  <div class="bar-label" style="font-size: 0.6rem;">{rDay.label}</div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <div class="donut-chart-container">
+            <div class="chart-title" style="display: flex; justify-content: space-between;">
+              Project distribution
+            </div>
+            <div class="donut-content">
+              <div class="donut-svg-wrapper">
+                <svg viewBox="0 0 40 40" class="donut-svg">
+                  <!-- Segments -->
+                  {#each reportProjects as rp}
+                    <circle 
+                      cx="20" cy="20" r="15.91549430918954" 
+                      fill="transparent" 
+                      stroke={rp.color} 
+                      stroke-width="5"
+                      pathLength="100"
+                      stroke-dasharray="{rp.pct * 100} {100 - rp.pct * 100}"
+                      stroke-dashoffset={-rp.offset} 
+                      class="donut-segment"
+                      on:mouseenter={() => hoveredProjectId = rp.id}
+                      on:mouseleave={() => hoveredProjectId = null}
+                      style="filter: {hoveredProjectId === rp.id ? `drop-shadow(0 0 6px ${rp.color})` : 'none'}; opacity: {hoveredProjectId && hoveredProjectId !== rp.id ? 0.3 : 1}; cursor: pointer;"
+                    />
+                  {/each}
+                </svg>
+                <div class="donut-center-text">
+                  <div style="font-weight: 600; font-size: 1.1rem; color: white;">{formatDurationDisplay(reportTotalSeconds)}</div>
+                  <div style="font-size: 0.6rem; color: #888; margin-top: 2px;">PROJECT</div>
+                </div>
+              </div>
+              <div class="donut-legend">
+                {#each reportProjects as rp}
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div class="legend-item"
+                       on:mouseenter={() => hoveredProjectId = rp.id}
+                       on:mouseleave={() => hoveredProjectId = null}
+                       style="transition: all 0.2s; {hoveredProjectId === rp.id ? `color: white; text-shadow: 0 0 8px ${rp.color};` : ''} opacity: {hoveredProjectId && hoveredProjectId !== rp.id ? 0.4 : 1}; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span class="legend-color" style="background: {rp.color}; {hoveredProjectId === rp.id ? `box-shadow: 0 0 8px ${rp.color};` : ''}"></span>
+                      <span class="legend-name">{rp.name}</span>
+                    </div>
+                    <span class="legend-pct">{(rp.pct * 100).toFixed(2)}%</span>
+                  </div>
+                {/each}
+                {#if reportProjects.length === 0}
+                  <div class="empty-state" style="padding: 1rem; border: none;">No data</div>
+                {/if}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-header">
+            <div>PROJECT | MEMBER</div>
+            <div style="text-align: right;">DURATION</div>
+            <div style="text-align: right;">DURATION %</div>
+          </div>
+          {#each reportProjects as rp}
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="table-row"
+                 on:mouseenter={() => hoveredProjectId = rp.id}
+                 on:mouseleave={() => hoveredProjectId = null}
+                 style="transition: all 0.2s; {hoveredProjectId === rp.id ? `background: rgba(255,255,255,0.03); box-shadow: inset 2px 0 0 ${rp.color};` : ''} opacity: {hoveredProjectId && hoveredProjectId !== rp.id ? 0.4 : 1}; cursor: pointer; padding-left: 0.5rem; border-radius: 4px;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-color" style="background: {rp.color}; {hoveredProjectId === rp.id ? `box-shadow: 0 0 8px ${rp.color};` : ''}"></span>
+                <span style="font-weight: 500; {hoveredProjectId === rp.id ? 'color: white;' : ''}">{rp.name}</span>
+              </div>
+              <div style="text-align: right; font-family: monospace;">{formatDurationDisplay(rp.totalSecs)}</div>
+              <div style="text-align: right; font-family: monospace; font-weight: 600;">{(rp.pct * 100).toFixed(2)}%</div>
+            </div>
+          {/each}
+          {#if reportProjects.length === 0}
+            <div class="empty-state">No data available for this week</div>
           {/if}
         </div>
       </div>
@@ -1514,5 +1699,183 @@
   .toggl-modal .btn-create {
     padding: 0.5rem 1.2rem;
     border-radius: 6px;
+  }
+
+  /* Reports View */
+  .reports-view {
+    padding: 1.5rem 2rem;
+    flex: 1;
+    overflow-y: auto;
+    background-color: var(--t-bg-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .date-range-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--t-bg-panel);
+    border: 1px solid var(--t-border);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: white;
+  }
+  .kpi-cards {
+    display: flex;
+    background: var(--t-bg-panel);
+    border: 1px solid var(--t-border);
+    border-radius: 8px;
+    padding: 1rem 0;
+  }
+  .kpi-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0 1.5rem;
+    border-right: 1px solid var(--t-border);
+  }
+  .kpi-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--t-text-main);
+  }
+  .kpi-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+  }
+  .charts-row {
+    display: flex;
+    gap: 1.5rem;
+    height: 350px;
+  }
+  .bar-chart-container, .donut-chart-container, .table-container {
+    background: var(--t-bg-panel);
+    border: 1px solid var(--t-border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .bar-chart-container {
+    flex: 2;
+  }
+  .donut-chart-container {
+    flex: 1;
+    min-width: 300px;
+  }
+  .chart-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 1rem;
+  }
+  .bar-chart {
+    flex: 1;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--t-border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+  .bar-value {
+    font-size: 0.65rem;
+    color: #888;
+  }
+  .bar-track {
+    width: 100%;
+    max-width: 20px;
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    background: transparent;
+  }
+  .bar-fill {
+    width: 100%;
+    background: #d946ef; /* Magenta color from mockup */
+    border-radius: 3px 3px 0 0;
+    transition: height 0.5s ease-out;
+  }
+  .bar-label {
+    font-size: 0.7rem;
+    color: #888;
+    text-align: center;
+    font-weight: 600;
+  }
+  .donut-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+  }
+  .donut-svg-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+  .donut-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .donut-segment {
+    transition: stroke-dasharray 0.5s, stroke-dashoffset 0.5s, filter 0.2s, opacity 0.2s;
+  }
+  .donut-center-text {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .donut-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .legend-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #ccc;
+  }
+  .legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    font-size: 0.75rem;
+    color: #888;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--t-border);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .table-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    font-size: 0.85rem;
+    color: #ccc;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
   }
 </style>
