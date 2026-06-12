@@ -1,0 +1,301 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Timer from "../components/Timer.svelte";
+---
+
+<Layout>
+	<nav class="navbar">
+		<div class="logo">ClockOfWork</div>
+		<div class="nav-links">
+			<a href="#features">Características</a>
+			<a href="#demo">Demo</a>
+			<a href="/login	" class="btn-nav">Ingresar</a>
+		</div>
+	</nav>
+
+	<main>
+		<!-- Hero Section -->
+		<section class="hero">
+			<div class="hero-content">
+				<div class="badge">Nuevo Lanzamiento 🚀</div>
+				<h1>
+					Domina tu tiempo, <br /><span class="highlight"
+						>multiplica tu enfoque</span>
+				</h1>
+				<p>
+					ClockOfWork es la herramienta de gestión de tiempo diseñada
+					para profesionales que buscan fluidez, flexibilidad y
+					control total sobre su productividad.
+				</p>
+				<div class="hero-actions">
+					<a href="#demo" class="btn-primary">Pruébalo Gratis</a>
+					<a href="#features" class="btn-secondary">Saber Más</a>
+				</div>
+			</div>
+			<div class="hero-visual" id="demo">
+				<div class="glow-bg"></div>
+				<!-- Renderizamos el timer como Demo Visual en el Hero -->
+				<Timer client:load />
+			</div>
+		</section>
+
+		<!-- Features Section -->
+		<section id="features" class="features">
+			<h2>¿Por qué ClockOfWork?</h2>
+			<div class="grid">
+				<div class="feature-card glass">
+					<div class="icon">⚡</div>
+					<h3>Flujo Ininterrumpido</h3>
+					<p>
+						Diseñado para mantenerte en la zona. Sin configuraciones
+						complejas, solo inicia y concéntrate.
+					</p>
+				</div>
+				<div class="feature-card glass">
+					<div class="icon">🔄</div>
+					<h3>Flexible y Adaptable</h3>
+					<p>
+						Ya sea Pomodoro tradicional o sesiones profundas de 90
+						minutos, se adapta a tu estilo de trabajo.
+					</p>
+				</div>
+				<div class="feature-card glass">
+					<div class="icon">☁️</div>
+					<h3>Sincronización en la Nube</h3>
+					<p>
+						Tu historial y configuraciones respaldados de forma
+						segura con nuestra integración con Supabase.
+					</p>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<footer class="footer">
+		<p>
+			&copy; {new Date().getFullYear()} ClockOfWork. Todos los derechos reservados.
+		</p>
+	</footer>
+</Layout>
+
+<style>
+	/* Navbar */
+	.navbar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1.5rem 4rem;
+		backdrop-filter: blur(10px);
+		border-bottom: 1px solid var(--glass-border);
+		position: fixed;
+		top: 0;
+		width: 100%;
+		z-index: 100;
+	}
+	.logo {
+		font-weight: 800;
+		font-size: 1.5rem;
+		background: linear-gradient(to right, #f8fafc, #8b5cf6);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
+	.nav-links {
+		display: flex;
+		gap: 2rem;
+		align-items: center;
+	}
+	.nav-links a {
+		color: var(--text-main);
+		text-decoration: none;
+		font-weight: 400;
+		transition: color 0.2s;
+	}
+	.nav-links a:hover {
+		color: #a78bfa;
+	}
+	.btn-nav {
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		padding: 0.5rem 1.2rem;
+		border-radius: 2rem;
+		transition: all 0.3s ease;
+		color: var(--text-main);
+		text-decoration: none;
+	}
+	.btn-nav:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	main {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 100%;
+		padding-top: 5rem; /* offset for navbar */
+	}
+
+	/* Hero */
+	.hero {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		max-width: 1200px;
+		width: 100%;
+		min-height: 90vh;
+		padding: 2rem 4rem;
+		gap: 4rem;
+	}
+	.hero-content {
+		flex: 1;
+	}
+	.badge {
+		display: inline-block;
+		padding: 0.4rem 1rem;
+		background: rgba(139, 92, 246, 0.15);
+		color: #c4b5fd;
+		border-radius: 2rem;
+		font-size: 0.9rem;
+		font-weight: 600;
+		margin-bottom: 1.5rem;
+		border: 1px solid rgba(139, 92, 246, 0.3);
+	}
+	h1 {
+		font-size: 4rem;
+		line-height: 1.1;
+		margin-bottom: 1.5rem;
+		font-weight: 800;
+	}
+	.highlight {
+		background: linear-gradient(135deg, #a855f7, #3b82f6);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
+	.hero-content p {
+		font-size: 1.2rem;
+		color: #cbd5e1;
+		margin-bottom: 2.5rem;
+		line-height: 1.6;
+		max-width: 500px;
+	}
+	.hero-actions {
+		display: flex;
+		gap: 1rem;
+	}
+	.btn-primary {
+		background: var(--primary-color);
+		color: white;
+		padding: 1rem 2rem;
+		border-radius: 2rem;
+		text-decoration: none;
+		font-weight: 600;
+		box-shadow: 0 0 20px var(--primary-glow);
+		transition: all 0.3s ease;
+	}
+	.btn-primary:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 0 30px var(--primary-glow);
+		background: #7c3aed;
+	}
+	.btn-secondary {
+		background: var(--glass-bg);
+		color: white;
+		padding: 1rem 2rem;
+		border-radius: 2rem;
+		text-decoration: none;
+		font-weight: 600;
+		border: 1px solid var(--glass-border);
+		transition: all 0.3s ease;
+	}
+	.btn-secondary:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.hero-visual {
+		flex: 1;
+		position: relative;
+		display: flex;
+		justify-content: center;
+	}
+	.glow-bg {
+		position: absolute;
+		width: 300px;
+		height: 300px;
+		background: var(--primary-color);
+		filter: blur(120px);
+		opacity: 0.3;
+		border-radius: 50%;
+		z-index: 0;
+	}
+	.hero-visual > :global(*) {
+		position: relative;
+		z-index: 1;
+	}
+
+	/* Features */
+	.features {
+		max-width: 1200px;
+		width: 100%;
+		padding: 6rem 4rem;
+		text-align: center;
+	}
+	.features h2 {
+		font-size: 2.5rem;
+		margin-bottom: 4rem;
+	}
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		gap: 2rem;
+	}
+	.glass {
+		background: var(--glass-bg);
+		backdrop-filter: blur(16px);
+		border: 1px solid var(--glass-border);
+		border-radius: 1.5rem;
+		padding: 2.5rem;
+		transition: transform 0.3s ease;
+	}
+	.glass:hover {
+		transform: translateY(-10px);
+		border-color: rgba(139, 92, 246, 0.3);
+	}
+	.icon {
+		font-size: 3rem;
+		margin-bottom: 1.5rem;
+	}
+	.feature-card h3 {
+		font-size: 1.5rem;
+		margin-bottom: 1rem;
+	}
+	.feature-card p {
+		color: #94a3b8;
+		line-height: 1.6;
+	}
+
+	/* Footer */
+	.footer {
+		padding: 3rem;
+		text-align: center;
+		color: #64748b;
+		border-top: 1px solid var(--glass-border);
+		margin-top: 2rem;
+		width: 100%;
+	}
+
+	@media (max-width: 900px) {
+		.hero {
+			flex-direction: column;
+			text-align: center;
+			padding: 2rem;
+		}
+		.hero-content p {
+			margin: 0 auto 2.5rem auto;
+		}
+		.hero-actions {
+			justify-content: center;
+		}
+		.navbar {
+			padding: 1rem 2rem;
+		}
+	}
+</style>

@@ -1,0 +1,18 @@
+---
+import Layout from '../layouts/Layout.astro';
+import TogglDashboard from '../components/TogglDashboard.svelte';
+---
+
+<Layout>
+  <!-- Renderizamos la UI del Dashboard como cliente -->
+  <TogglDashboard client:load />
+</Layout>
+
+<style is:global>
+  /* Sobrescribimos el padding y márgenes por defecto para el dashboard */
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Evitar scroll en el layout principal, el dashboard lo manejará */
+  }
+</style>
